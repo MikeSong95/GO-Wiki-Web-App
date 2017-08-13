@@ -3,7 +3,17 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"net/http"
 )
+
+// Used to handle requests to the web root "/"
+// http.Request = data structure that represents the client HTTP request
+// http.ResponseWriter assembles the HTTP servers response. By writing to it, we can send data to the HTTP client.
+func viewHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/view/"):]		// path component of the requested URL
+	p, _ := loadPage(title)
+	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)	// Write to w, the http.ResponseWriter to send data to HTTP client
+}
 
 // Defining the data structures
 type Page struct {
@@ -35,8 +45,6 @@ func loadPage(title string) (*Page, error) {
 // Main function
 // Test what we've written
 func main() {
-	p1 := &Page{Title: "TestPage", Body: []byte("This is a sample Page.")}
-	p1.save()
-	p2, _ := loadPage("TestPage")
-	fmt.Println(string(p2.Body))
+	http.HandleFunc("/view/", viewHandler)	// Handle any requests under the path /view/
+	http.ListenAndServe(":8080", nil)
 }
