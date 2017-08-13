@@ -4,6 +4,8 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"errors"
 )
 
 // Defining the data structures
@@ -11,6 +13,9 @@ type Page struct {
 	Title string
 	Body []byte		// Byte slice - like an arry but with unspecified length. This is the type expected by the io libraries.
 }
+
+// Global variable to strore regexp
+var validPath = regexp.MustCompile("^/(edit|save|view)/([a-zA-Z0-9]+)$)")
 
 // Global variable to parse all templates into a single template. Then use ExecuteTemplate to render a specific template.
 // ParseFiles takes any number of string arguments (identify our template files) and parses them into templates that are named after the base file name.
@@ -22,7 +27,10 @@ var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
 // http.Request = data structure that represents the client HTTP request
 // http.ResponseWriter assembles the HTTP servers response. By writing to it, we can send data to the HTTP client.
 func viewHandler(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/view/"):]		// path component of the requested URL
+	title, err := getTitle(w, r)		// path component of the requested URL
+	if err != nil {
+		return
+	}
 	p, err := loadPage(title)
 	// If the page is not found, redirects the client to the EDIT page so that the content may be created.
 	if err != nil {
@@ -34,7 +42,10 @@ func viewHandler(w http.ResponseWriter, r *http.Request) {
 
 // Loads page and displays and HTML form for editing the page
 func editHandler(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/edit/"):]
+	title, err := getTitle(w, r)
+	if err != nil {
+		return
+	}
 	p, err := loadPage(title)
 	if err != nil {
 		p = &Page{Title: title}
@@ -48,10 +59,13 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handle the submission of forms located on the edit pages. 
 func saveHandler(w http.ResponseWriter, r *http.Request) {
-	title := r.URL.Path[len("/save/"):]
+	title, err := getTitle(w, r)
+	if err != nil {
+		return
+	}
 	body := r.FormValue("body")	// Get the page content. It is of type string - we must convert it to []byte before it will fit into the Page struct.ß
 	p := &Page{Title: title, Body: []byte(body)}
-	err := p.save()	// Write the data to a file
+	err = p.save()	// Write the data to a file
 	// An error that occurs during p.save() will be reported to the user
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -67,6 +81,16 @@ func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)	// Sends a specified HTTP response code (Internal Server Error) and error message.
 		return
 	}
+}
+
+// Validates the path and extracts the page title
+func getTitle(w http.ResponseWriter, r *http.Request) (string, error) {
+	m := validPath.FindStringSubmatch(r.URL.Path)
+	if m == nil {
+		http.NotFound(w, r)	// 404 not found http error
+		return "", errors.New("Invalid Page Title")
+	}
+	return m[2], nil // The title is the second subexpression
 }
 
 // Persistant storage
