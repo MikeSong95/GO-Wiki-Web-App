@@ -1,10 +1,16 @@
 package main
 
 import (
-	"fmt"
+	"html/template"
 	"io/ioutil"
 	"net/http"
 )
+
+// Defining the data structures
+type Page struct {
+	Title string
+	Body []byte		// Byte slice - like an arry but with unspecified length. This is the type expected by the io libraries.
+}
 
 // Used to handle requests to the web root "/"
 // http.Request = data structure that represents the client HTTP request
@@ -12,19 +18,32 @@ import (
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	title := r.URL.Path[len("/view/"):]		// path component of the requested URL
 	p, _ := loadPage(title)
-	fmt.Fprintf(w, "<h1>%s</h1><div>%s</div>", p.Title, p.Body)	// Write to w, the http.ResponseWriter to send data to HTTP client
+	renderTemplate(w, "view", p)
 }
 
-// Defining the data structures
-type Page struct {
-	Title string
-	Body []byte		// Byte slice - like an arry but not specified length. This is the type expected by the io libraries.
+// Loads page and displays and HTML form for editing the page
+func editHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/edit/"):]
+	p, err := loadPage(title)
+	if err != nil {
+		p = &Page{Title: title}
+	}
+	/* The renderTemplate function replaces the following code for better code re-use:
+	 * t, _ := template.ParseFiles("edit.html")	
+	 * t.Execute(w,p)
+	 */ 
+	renderTemplate(w, "edit", p)
+}
+
+func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
+	t, _ := template.ParseFiles(tmpl + ".html")
+	t.Execute(w, p)
 }
 
 // Persistant storage
 // Create a save method on Page
-/* This is a method named save that takes as its receiver p, a pointer to Page. 
- * It takes no parameters, and returns a value of type error. */
+// This is a method named save that takes as its receiver p, a pointer to Page. 
+// It takes no parameters, and returns a value of type error. 
 func (p *Page) save() error {
 	filename := p.Title + ".txt"
 	return ioutil.WriteFile(filename, p.Body, 0600)	// 0600 = r-w permissions for current user only
@@ -46,5 +65,6 @@ func loadPage(title string) (*Page, error) {
 // Test what we've written
 func main() {
 	http.HandleFunc("/view/", viewHandler)	// Handle any requests under the path /view/
+	http.HandleFunc("/edit/", editHandler)	// Handle any requests under the path /edit/
 	http.ListenAndServe(":8080", nil)
 }
