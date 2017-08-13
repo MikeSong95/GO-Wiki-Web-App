@@ -45,14 +45,26 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 	title := r.URL.Path[len("/save/"):]
 	body := r.FormValue("body")	// Get the page content. It is of type string - we must convert it to []byte before it will fit into the Page struct.ß
 	p := &Page{Title: title, Body: []byte(body)}
-	p.save()	// Write the data to a file
+	err := p.save()	// Write the data to a file
+	// An error that occurs during p.save() will be reported to the user
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/view/"+title, http.StatusFound)
-
 }
 
+// Helper function to utilise HTTP templates
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	t, _ := template.ParseFiles(tmpl + ".html")
-	t.Execute(w, p)
+	t, err := template.ParseFiles(tmpl + ".html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)	// Sends a specified HTTP response code (Internal Server Error) and error message.
+		return
+	}
+	err = t.Execute(w, p)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }
 
 // Persistant storage
