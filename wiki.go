@@ -17,7 +17,12 @@ type Page struct {
 // http.ResponseWriter assembles the HTTP servers response. By writing to it, we can send data to the HTTP client.
 func viewHandler(w http.ResponseWriter, r *http.Request) {
 	title := r.URL.Path[len("/view/"):]		// path component of the requested URL
-	p, _ := loadPage(title)
+	p, err := loadPage(title)
+	// If the page is not found, redirects the client to the EDIT page so that the content may be created.
+	if err != nil {
+		http.Redirect(w, r, "/edit/"+title, http.StatusFound)	// Adds an HTTP status code of http.StatusFound (302) and a Location header to the HTTP response.
+		return
+	}
 	renderTemplate(w, "view", p)
 }
 
