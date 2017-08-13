@@ -40,6 +40,16 @@ func editHandler(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "edit", p)
 }
 
+// Handle the submission of forms located on the edit pages. 
+func saveHandler(w http.ResponseWriter, r *http.Request) {
+	title := r.URL.Path[len("/save/"):]
+	body := r.FormValue("body")	// Get the page content. It is of type string - we must convert it to []byte before it will fit into the Page struct.ß
+	p := &Page{Title: title, Body: []byte(body)}
+	p.save()	// Write the data to a file
+	http.Redirect(w, r, "/view/"+title, http.StatusFound)
+
+}
+
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
 	t, _ := template.ParseFiles(tmpl + ".html")
 	t.Execute(w, p)
@@ -71,5 +81,6 @@ func loadPage(title string) (*Page, error) {
 func main() {
 	http.HandleFunc("/view/", viewHandler)	// Handle any requests under the path /view/
 	http.HandleFunc("/edit/", editHandler)	// Handle any requests under the path /edit/
+	http.HandleFunc("/save/", saveHandler)	// Handle any requests under the path /save/
 	http.ListenAndServe(":8080", nil)
 }
