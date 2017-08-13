@@ -12,6 +12,12 @@ type Page struct {
 	Body []byte		// Byte slice - like an arry but with unspecified length. This is the type expected by the io libraries.
 }
 
+// Global variable to parse all templates into a single template. Then use ExecuteTemplate to render a specific template.
+// ParseFiles takes any number of string arguments (identify our template files) and parses them into templates that are named after the base file name.
+// Prevents renderTemplate from parsing every time a page is rendered.
+// template.Must is a convenience wrapper that panics when passed a non-nil error value, and otherwise returns the *Template unaltered.
+var templates = template.Must(template.ParseFiles("edit.html", "view.html"))
+
 // Used to handle requests to the web root "/"
 // http.Request = data structure that represents the client HTTP request
 // http.ResponseWriter assembles the HTTP servers response. By writing to it, we can send data to the HTTP client.
@@ -56,14 +62,10 @@ func saveHandler(w http.ResponseWriter, r *http.Request) {
 
 // Helper function to utilise HTTP templates
 func renderTemplate(w http.ResponseWriter, tmpl string, p *Page) {
-	t, err := template.ParseFiles(tmpl + ".html")
+	err := templates.ExecuteTemplate(w, tmpl + ".html", p)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)	// Sends a specified HTTP response code (Internal Server Error) and error message.
 		return
-	}
-	err = t.Execute(w, p)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
