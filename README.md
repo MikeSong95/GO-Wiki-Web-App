@@ -1,3 +1,3 @@
-Following this tutorial on writing web applications using GO.
+Wiki web applications using GO.
 
-https://golang.org/doc/articles/wiki/
+Following this tutorial: https://golang.org/doc/articles/wiki/
